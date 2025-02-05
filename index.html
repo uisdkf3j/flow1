@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Animated Flow</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: black;
+        }
+        #container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            touch-action: none;
+        }
+        #imageDisplay {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        #loadingScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: black;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-family: Arial, sans-serif;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div id="loadingScreen">Loading images... <span id="loadingProgress">0</span>%</div>
+    <div id="container">
+        <img id="imageDisplay" src="./JPEG sequence/0001.jpg" alt="Animation Frame">
+    </div>
+
+    <script>
+        const container = document.getElementById('container');
+        const imageElement = document.getElementById('imageDisplay');
+        const loadingScreen = document.getElementById('loadingScreen');
+        const loadingProgress = document.getElementById('loadingProgress');
+        const totalFrames = 480;
+        const stopFrames = [1, 60, 180, 260, 400, 460];
+        const FPS = 30;
+        
+        let currentFrame = 1;
+        let targetFrame = 1;
+        let isDragging = false;
+        let startY = 0;
+        let lastY = 0;
+        let animationId = null;
+        let imagesLoaded = 0;
+
+        // Preload images with loading tracking
+        const images = [];
+        function preloadImages() {
+            return new Promise((resolve) => {
+                for (let i = 1; i <= totalFrames; i++) {
+                    const img = new Image();
+                    const frameNumber = i.toString().padStart(4, '0');
+                    img.src = `./JPEG sequence/${frameNumber}.jpg`;
+                    img.onload = () => {
+                        imagesLoaded++;
+                        loadingProgress.textContent = Math.round((imagesLoaded / totalFrames) * 100);
+                        if (imagesLoaded === totalFrames) {
+                            loadingScreen.style.display = 'none';
+                            resolve();
+                        }
+                    };
+                    images.push(img);
+                }
+            });
+        }
+
+        // Initialize the app after images are loaded
+        async function init() {
+            await preloadImages();
+            
+            function findNearestStopFrame(frame) {
+                return stopFrames.reduce((prev, curr) => {
+                    return Math.abs(curr - frame) < Math.abs(prev - frame) ? curr : prev;
+                });
+            }
+
+            function displayFrame(frameIndex) {
+                frameIndex = Math.max(1, Math.min(totalFrames, Math.round(frameIndex)));
+                const frameNumber = frameIndex.toString().padStart(4, '0');
+                imageElement.src = `./JPEG sequence/${frameNumber}.jpg`;
+            }
+
+            function animateToStopFrame() {
+                if (currentFrame === targetFrame) {
+                    animationId = null;
+                    return;
+                }
+
+                const direction = currentFrame < targetFrame ? 1 : -1;
+                currentFrame += direction;
+                displayFrame(currentFrame);
+
+                animationId = setTimeout(() => {
+                    requestAnimationFrame(animateToStopFrame);
+                }, 1000 / FPS);
+            }
+
+            function updateFrame(frameIndex, snapToStop = false) {
+                if (snapToStop) {
+                    targetFrame = findNearestStopFrame(frameIndex);
+                    
+                    // Clear any existing animation
+                    if (animationId) {
+                        clearTimeout(animationId);
+                    }
+                    
+                    // Start new animation
+                    requestAnimationFrame(animateToStopFrame);
+                } else {
+                    currentFrame = frameIndex;
+                    displayFrame(currentFrame);
+                }
+            }
+
+            container.addEventListener('touchstart', (e) => {
+                isDragging = true;
+                startY = e.touches[0].clientY;
+                lastY = e.touches[0].clientY;
+                e.preventDefault();
+            });
+
+            container.addEventListener('touchmove', (e) => {
+                if (!isDragging) return;
+                
+                const deltaY = e.touches[0].clientY - lastY;
+                const sensitivity = 0.5; // Changed from 2 to 1 to make it 2x less sensitive
+                let nextFrame = currentFrame - deltaY * sensitivity;
+                
+                // Ensure frame stays within bounds
+                nextFrame = Math.max(1, Math.min(totalFrames, nextFrame));
+                
+                updateFrame(nextFrame, false);
+                lastY = e.touches[0].clientY;
+                e.preventDefault();
+            });
+
+            container.addEventListener('touchend', () => {
+                isDragging = false;
+                updateFrame(currentFrame, true);
+            });
+
+            container.addEventListener('touchcancel', () => {
+                isDragging = false;
+                updateFrame(currentFrame, true);
+            });
+        }
+
+        // Start the initialization
+        init();
+    </script>
+</body>
+</html>
