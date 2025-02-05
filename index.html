@@ -107,8 +107,8 @@
                     return;
                 }
 
-                // Use easing for smoother animation
-                const ease = 0.15;  // Adjust this value between 0 and 1 for different smoothing effects
+                // Reduced easing value for slower, smoother animation
+                const ease = 0.08;  // Reduced from 0.15
                 currentFrame += (targetFrame - currentFrame) * ease;
                 displayFrame(Math.round(currentFrame));
 
@@ -143,7 +143,7 @@
                 if (!isDragging) return;
                 
                 const deltaY = e.touches[0].clientY - lastY;
-                const sensitivity = 0.5;
+                const sensitivity = 0.25;  // Reduced from 0.5 for slower touch response
                 let nextFrame = currentFrame - deltaY * sensitivity;
                 
                 // Ensure frame stays within bounds
